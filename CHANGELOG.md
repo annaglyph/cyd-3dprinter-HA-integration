@@ -11,3 +11,5 @@ All notable changes to this project will be documented in this file.
 - Improved quick panel footer spacing so the IP address no longer pushes the online status off-screen.
 - Normalized quick panel switch and power status casing from `on`/`off` to `On`/`Off`.
 - Replaced deprecated ESPHome IP address string formatting to stay compatible with ESPHome 2026.8.0 and newer.
+- Convert print start/end times from UTC timestamps to the Home Assistant local timezone so they match the header clock.
+- Treat ISO-format Bambu timestamps without an explicit offset as UTC, and derive end time from remaining duration when a print is active so it matches the ETA.
