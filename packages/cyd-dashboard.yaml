@@ -200,6 +200,21 @@ globals:
     restore_value: no
     initial_value: 'false'
 
+  - id: captured_start_valid
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: captured_start_hour
+    type: uint8_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: captured_start_minute
+    type: uint8_t
+    restore_value: no
+    initial_value: '0'
+
   - id: palette_bg_color
     type: uint32_t
     restore_value: no
@@ -556,6 +571,43 @@ text_sensor:
     id: printer_status
     entity_id: ${printer_state_entity}
     internal: true
+    on_value:
+      then:
+        - lambda: |-
+            std::string s = x;
+            for (char &c : s) {
+              if (c >= 'A' && c <= 'Z') {
+                c = static_cast<char>(c - 'A' + 'a');
+              }
+            }
+
+            const bool is_active =
+                s.find("prepar") != std::string::npos ||
+                s.find("running") != std::string::npos;
+
+            const bool is_finished =
+                s.empty() || s == "unknown" || s == "unavailable" ||
+                s.find("idle") != std::string::npos ||
+                s.find("finish") != std::string::npos ||
+                s.find("complete") != std::string::npos ||
+                s.find("failed") != std::string::npos ||
+                s.find("cancel") != std::string::npos ||
+                s.find("offline") != std::string::npos;
+
+            if (is_finished) {
+              id(captured_start_valid) = false;
+              return;
+            }
+
+            if (is_active && !id(captured_start_valid)) {
+              auto now = id(ha_time).now();
+              if (now.is_valid()) {
+                id(captured_start_hour) = now.hour;
+                id(captured_start_minute) = now.minute;
+                id(captured_start_valid) = true;
+              }
+            }
+        - script.execute: refresh_ui
 
   - platform: homeassistant
     id: printer_start_time
@@ -593,78 +645,10 @@ text_sensor:
     internal: true
     update_interval: 1s
     lambda: |-
-      const std::string raw = id(printer_start_time).state;
-      if (raw.empty() || raw == "unknown" || raw == "unavailable") {
-        return std::string("--");
-      }
-
-      std::string s = raw;
-      for (char &c : s) {
-        if (c == 'T') {
-          c = ' ';
-        }
-      }
-
-      const size_t dot = s.find('.');
-      if (dot != std::string::npos) {
-        s = s.substr(0, dot);
-      }
-
-      bool is_utc = false;
-      if (!s.empty() && s.back() == 'Z') {
-        is_utc = true;
-        s.pop_back();
-        while (!s.empty() && s.back() == ' ') {
-          s.pop_back();
-        }
-      }
-      if (s.size() >= 6) {
-        const size_t pos = s.size() - 6;
-        const char sign = s[pos];
-        if ((sign == '+' || sign == '-') &&
-            s[pos + 1] >= '0' && s[pos + 1] <= '9' &&
-            s[pos + 2] >= '0' && s[pos + 2] <= '9' &&
-            s[pos + 3] == ':' &&
-            s[pos + 4] >= '0' && s[pos + 4] <= '9' &&
-            s[pos + 5] >= '0' && s[pos + 5] <= '9') {
-          is_utc = true;
-          s = s.substr(0, pos);
-          while (!s.empty() && s.back() == ' ') {
-            s.pop_back();
-          }
-        }
-      }
-      if (!is_utc && s.size() >= 10 && s[4] == '-' && s[7] == '-' &&
-          s[0] >= '0' && s[0] <= '9') {
-        is_utc = true;
-      }
-
-      ESPTime parsed;
-      if (ESPTime::strptime(s, parsed)) {
-        if (is_utc && parsed.year >= 2019) {
-          parsed.recalc_timestamp_utc();
-          if (parsed.timestamp >= 0) {
-            const ESPTime local = ESPTime::from_epoch_local(parsed.timestamp);
-            char buf[8];
-            snprintf(buf, sizeof(buf), "%02d:%02d", local.hour, local.minute);
-            return std::string(buf);
-          }
-        }
+      if (id(captured_start_valid)) {
         char buf[8];
-        snprintf(buf, sizeof(buf), "%02d:%02d", parsed.hour, parsed.minute);
+        snprintf(buf, sizeof(buf), "%02d:%02d", id(captured_start_hour), id(captured_start_minute));
         return std::string(buf);
-      }
-
-      auto is_digit = [](char c) -> bool { return c >= '0' && c <= '9'; };
-      const size_t colon = s.find(':');
-      if (colon != std::string::npos && colon + 2 < s.size() &&
-          is_digit(s[colon + 1]) && is_digit(s[colon + 2])) {
-        if (colon >= 2 && is_digit(s[colon - 2]) && is_digit(s[colon - 1])) {
-          return s.substr(colon - 2, 5);
-        }
-        if (colon >= 1 && is_digit(s[colon - 1])) {
-          return std::string("0") + s.substr(colon - 1, 4);
-        }
       }
       return std::string("--");
 
