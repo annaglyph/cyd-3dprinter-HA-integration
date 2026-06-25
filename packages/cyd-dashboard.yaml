@@ -1,8 +1,6 @@
 esphome:
-  name: ${device_name}
-  friendly_name: ${friendly_name}
   name_add_mac_suffix: false
-  min_version: 2025.2.0
+  min_version: 2026.6.0
   platformio_options:
     board_build.flash_mode: dio
     board_build.f_flash: 40000000L
@@ -190,6 +188,16 @@ globals:
     restore_value: no
     initial_value: 'false'
 
+  - id: night_period_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: was_night_period
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
   - id: quick_panel_visible
     type: bool
     restore_value: no
@@ -350,6 +358,10 @@ display:
     dimensions:
       width: ${display_w}
       height: ${display_h}
+      offset_width: 0
+      offset_height: 0
+      pad_width: 0
+      pad_height: 0
     update_interval: never
 
 touchscreen:
@@ -784,6 +796,15 @@ binary_sensor:
     entity_category: diagnostic
     disabled_by_default: false
 
+  - platform: template
+    id: night_period
+    name: "${friendly_name} Night Period"
+    icon: mdi:weather-night
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: |-
+      return id(night_period_active);
+
 switch:
   - platform: template
     id: dev_mode
@@ -806,6 +827,20 @@ switch:
       - logger.set_level: INFO
       - lambda: |-
           id(last_user_activity_ms) = millis();
+
+  - platform: template
+    id: cfg_night_schedule_enabled
+    name: "${friendly_name} Night Schedule"
+    icon: mdi:weather-night
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - script.execute: update_night_period
+      - script.execute: apply_backlight_from_state
+    turn_off_action:
+      - script.execute: update_night_period
+      - script.execute: apply_backlight_from_state
 
 button:
   - platform: restart
@@ -918,7 +953,7 @@ number:
 
   - platform: template
     id: cfg_backlight_sleep_pct
-    name: "${friendly_name} Backlight Sleep"
+    name: "${friendly_name} Backlight Sleep Night"
     icon: mdi:weather-night
     unit_of_measurement: "%"
     entity_category: config
@@ -932,20 +967,93 @@ number:
     set_action:
       - script.execute: apply_backlight_from_state
 
+  - platform: template
+    id: cfg_backlight_sleep_day_pct
+    name: "${friendly_name} Backlight Sleep Day"
+    icon: mdi:weather-sunny
+    unit_of_measurement: "%"
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 35
+    min_value: 0
+    max_value: 100
+    step: 1
+    mode: slider
+    set_action:
+      - script.execute: apply_backlight_from_state
+
+  - platform: template
+    id: cfg_night_start_hour
+    name: "${friendly_name} Night Start Hour"
+    icon: mdi:weather-sunset
+    unit_of_measurement: h
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 22
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    set_action:
+      - script.execute: update_night_period
+      - script.execute: apply_backlight_from_state
+
+  - platform: template
+    id: cfg_night_end_hour
+    name: "${friendly_name} Night End Hour"
+    icon: mdi:weather-sunny
+    unit_of_measurement: h
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: 7
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    set_action:
+      - script.execute: update_night_period
+      - script.execute: apply_backlight_from_state
+
 script:
+  - id: update_night_period
+    mode: restart
+    then:
+      - lambda: |-
+          bool is_night = false;
+          if (id(cfg_night_schedule_enabled).state) {
+            auto now = id(ha_time).now();
+            if (now.is_valid()) {
+              int hour = now.hour;
+              int start_h = static_cast<int>(id(cfg_night_start_hour).state);
+              int end_h = static_cast<int>(id(cfg_night_end_hour).state);
+              if (start_h < end_h) {
+                is_night = (hour >= start_h && hour < end_h);
+              } else if (start_h > end_h) {
+                is_night = (hour >= start_h || hour < end_h);
+              }
+            }
+          }
+          id(night_period_active) = is_night;
+
   - id: apply_backlight_from_state
     mode: restart
     then:
+      - script.execute: update_night_period
       - light.turn_on:
           id: backlight
           brightness: !lambda |-
             float min_b = id(cfg_backlight_min_pct).state / 100.0f;
             float max_b = id(cfg_backlight_max_pct).state / 100.0f;
-            float sleep_b = id(cfg_backlight_sleep_pct).state / 100.0f;
+            float sleep_night_b = id(cfg_backlight_sleep_pct).state / 100.0f;
+            float sleep_day_b = id(cfg_backlight_sleep_day_pct).state / 100.0f;
 
             if (isnan(min_b)) min_b = 0.20f;
             if (isnan(max_b)) max_b = 1.00f;
-            if (isnan(sleep_b)) sleep_b = 0.08f;
+            if (isnan(sleep_night_b)) sleep_night_b = 0.08f;
+            if (isnan(sleep_day_b)) sleep_day_b = 0.35f;
 
             if (min_b < 0.01f) min_b = 0.01f;
             if (min_b > 1.00f) min_b = 1.00f;
@@ -953,10 +1061,21 @@ script:
             if (max_b < min_b) max_b = min_b;
             if (max_b > 1.00f) max_b = 1.00f;
 
-            if (sleep_b < 0.00f) sleep_b = 0.00f;
-            if (sleep_b > 1.00f) sleep_b = 1.00f;
+            if (sleep_night_b < 0.00f) sleep_night_b = 0.00f;
+            if (sleep_night_b > 1.00f) sleep_night_b = 1.00f;
 
-            return id(is_sleeping) ? sleep_b : max_b;
+            if (sleep_day_b < 0.00f) sleep_day_b = 0.00f;
+            if (sleep_day_b > 1.00f) sleep_day_b = 1.00f;
+
+            if (!id(is_sleeping)) {
+              return max_b;
+            }
+
+            if (id(cfg_night_schedule_enabled).state && id(night_period_active)) {
+              return sleep_night_b;
+            }
+
+            return sleep_day_b;
 
   - id: show_quick_panel
     mode: restart
@@ -3470,8 +3589,15 @@ interval:
 
   - interval: 1s
     then:
+      - script.execute: update_night_period
       - lambda: |-
           const uint32_t now_ms = millis();
+
+          if (id(is_sleeping) && id(cfg_night_schedule_enabled).state &&
+              id(night_period_active) != id(was_night_period)) {
+            id(apply_backlight_from_state).execute();
+          }
+          id(was_night_period) = id(night_period_active);
 
           if (id(dev_mode).state) {
             id(last_user_activity_ms) = now_ms;

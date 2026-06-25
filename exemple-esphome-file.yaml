@@ -3,7 +3,7 @@
 # Copy this file, rename it, and fill in your own values.
 #
 # No clone needed — the full dashboard is loaded from GitHub automatically.
-# Source: https://github.com/maelremrem/cyd-3dprinter-HA-integration
+# Source: https://github.com/annaglyph/cyd-3dprinter-HA-integration
 # ─────────────────────────────────────────────────────────────────────────────
 
 substitutions:
@@ -38,12 +38,20 @@ substitutions:
   ha_clock_entity: sensor.time        # Standard HA time sensor (HH:MM)
 
 
+# Device identity must live in the root config so ESPHome can validate names
+# before package substitutions are expanded.
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  min_version: 2026.6.0
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Remote package — downloads the full dashboard firmware from GitHub.
 # ESPHome caches it locally and refreshes once per day.
 # ─────────────────────────────────────────────────────────────────────────────
 packages:
-  pins: github://maelremrem/cyd-3dprinter-HA-integration/packages/cyd-dashboard-pins.yaml@main
-  colors: github://maelremrem/cyd-3dprinter-HA-integration/packages/cyd-dashboard-colors.yaml@main
-  dashboard: github://maelremrem/cyd-3dprinter-HA-integration/packages/cyd-dashboard.yaml@main
-
+  pins: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-pins.yaml@main
+  colors: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-colors.yaml@main
+  dashboard: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard.yaml@main

@@ -2,8 +2,9 @@
 
 > A feature-rich ESPHome dashboard for the **Cheap Yellow Display (CYD)** that monitors your 3D printer in real time through Home Assistant.
 
-![banner](imgs/dualscreen.jpeg)
+**Maintained fork:** This repository ([annaglyph/cyd-3dprinter-HA-integration](https://github.com/annaglyph/cyd-3dprinter-HA-integration)) is an actively maintained fork of [maelremrem/cyd-3dprinter-HA-integration](https://github.com/maelremrem/cyd-3dprinter-HA-integration). Use the package URLs below so your CYD loads firmware from this fork. Requires ESPHome **2026.6.0** or newer.
 
+![banner](imgs/dualscreen.jpeg)
 ---
 
 ## ✨ Features
@@ -53,8 +54,7 @@ In ESPHome Builder, create a blank config, copy the example below, and fill in y
 # Copy this file, rename it, and fill in your own values.
 #
 # No clone needed — the full dashboard is loaded from GitHub automatically.
-# Source: https://github.com/maelremrem/cyd-3dprinter-HA-integration
-# ─────────────────────────────────────────────────────────────────────────────
+# Source: https://github.com/annaglyph/cyd-3dprinter-HA-integration# ─────────────────────────────────────────────────────────────────────────────
 
 substitutions:
   device_name: cyd-3d-dashboard       # ESPHome device name (no spaces)
@@ -88,15 +88,23 @@ substitutions:
   ha_clock_entity: sensor.time        # Standard HA time sensor (HH:MM)
 
 
+# Device identity must live in the root config so ESPHome can validate names
+# before package substitutions are expanded.
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  min_version: 2026.6.0
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Remote package — downloads the full dashboard firmware from GitHub.
 # ESPHome caches it locally and refreshes once per day.
 # ─────────────────────────────────────────────────────────────────────────────
 packages:
-  pins: github://maelremrem/cyd-3dprinter-HA-integration/packages/cyd-dashboard-pins.yaml@main
-  colors: github://maelremrem/cyd-3dprinter-HA-integration/packages/cyd-dashboard-colors.yaml@main
-  dashboard: github://maelremrem/cyd-3dprinter-HA-integration/packages/cyd-dashboard.yaml@main
-```
+  pins: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-pins.yaml@main
+  colors: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-colors.yaml@main
+  dashboard: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard.yaml@main```
 
 ### 2 — Flash
 
@@ -141,7 +149,7 @@ Quick menu details:
 
 ## 🧰 Prerequisites
 
-- [ESPHome](https://esphome.io) ≥ 2025.2.0 (CLI or Home Assistant add-on)
+- [ESPHome](https://esphome.io) ≥ 2026.6.0 (CLI or Home Assistant add-on)
 - [Home Assistant](https://www.home-assistant.io) with the **Bambu Lab integration** installed
 - A **Bambu Lab X1C**, or another printer integration exposing similar sensors. This project was tested with [ha-bambulab](https://github.com/greghesp/ha-bambulab).
 
@@ -190,6 +198,11 @@ After flashing, the device will appear automatically in Home Assistant (ESPHome 
 | `select.cyd_x1c_dashboard_palette` | Select | Current color palette |
 | `sensor.cyd_x1c_dashboard_wifi_signal` | Sensor | WiFi RSSI |
 | `switch.cyd_x1c_dashboard_backlight` | Switch | Display on/off |
+| `number.*_sleep_timeout` | Number | Auto-sleep delay (seconds) |
+| `number.*_backlight_*` | Number | Day/night/sleep brightness levels |
+| `switch.*_night_schedule` | Switch | Enable day/night screensaver schedule |
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for fork maintenance and local testing.
 
 ---
 
