@@ -104,7 +104,13 @@ esphome:
 packages:
   pins: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-pins.yaml@main
   colors: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-colors.yaml@main
-  dashboard: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard.yaml@main```
+  dashboard:
+    url: https://github.com/annaglyph/cyd-3dprinter-HA-integration
+    ref: main
+    refresh: 0s
+    files:
+      - packages/cyd-dashboard.yaml
+```
 
 ### 2 — Flash
 

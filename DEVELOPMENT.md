@@ -33,6 +33,10 @@ packages:
 
 ESPHome caches GitHub packages locally and refreshes about once per day. After pushing to `main`, re-run **Install** in ESPHome Builder to pick up changes immediately.
 
+If you still see stale package errors after a push, use `refresh: 0s` on the dashboard package (see `exemple-esphome-file.yaml`) or switch to local `!include` while testing.
+
+**Using local `!include`:** ESPHome reads `/config/esphome/packages/cyd-dashboard.yaml` on disk — pushing to GitHub does not update that file. Recopy from this repo after each change.
+
 The `esphome.name` and `friendly_name` fields must be in your root device YAML, not inside the dashboard package. Recent ESPHome versions validate those names before package substitutions are expanded.
 
 ## Testing local package changes

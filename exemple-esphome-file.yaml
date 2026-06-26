@@ -49,9 +49,14 @@ esphome:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Remote package — downloads the full dashboard firmware from GitHub.
-# ESPHome caches it locally and refreshes once per day.
+# refresh: 0s forces a fresh download on every validate/install (use 1d later).
 # ─────────────────────────────────────────────────────────────────────────────
 packages:
   pins: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-pins.yaml@main
   colors: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard-colors.yaml@main
-  dashboard: github://annaglyph/cyd-3dprinter-HA-integration/packages/cyd-dashboard.yaml@main
+  dashboard:
+    url: https://github.com/annaglyph/cyd-3dprinter-HA-integration
+    ref: main
+    refresh: 0s
+    files:
+      - packages/cyd-dashboard.yaml
