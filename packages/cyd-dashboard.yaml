@@ -801,7 +801,6 @@ binary_sensor:
     name: "${friendly_name} Night Period"
     icon: mdi:weather-night
     entity_category: diagnostic
-    update_interval: 1s
     lambda: |-
       return id(night_period_active);
 
@@ -1037,6 +1036,7 @@ script:
             }
           }
           id(night_period_active) = is_night;
+          id(night_period).publish_state(is_night);
 
   - id: apply_backlight_from_state
     mode: restart
